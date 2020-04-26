@@ -1,4 +1,5 @@
 from threading import Thread
+from abc import ABC, abstractmethod
 
 
 class BaseWorker:
@@ -26,6 +27,7 @@ class BaseWorker:
         sublinks = self.find_sublinks(link)
         self.storage.push_links(sublinks, link_depth + 1, link)
 
+    @abstractmethod
     def find_sublinks(self, link: str) -> list:
         """
         :param link: <str> link to web page
