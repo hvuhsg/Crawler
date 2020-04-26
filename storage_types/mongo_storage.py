@@ -5,7 +5,8 @@ from ..core.base_storage import BaseStorage
 
 
 class Storage(BaseStorage):
-    def __init__(self, db_name, base_url, max_depth, username, password, ip='localhost', port=27017, timeout=5000):
+    def __init__(self, db_name, base_url, max_depth, username, password, ip='localhost', port=27017,
+                 timeout=5000):
         super().__init__(db_name, base_url, max_depth)
         self.collection_name = base_url
         self.ip = ip
@@ -29,9 +30,13 @@ class Storage(BaseStorage):
 
     def setup(self):
         client, db = self.connect_to_mongo()
-        collection = db[self.collection_name]
-        collection.create_index("url", unique=True)
-        collection.insert_one({"url": self.base_url, "depth": 0, "finish_scan": False, "middle_of_scan": False})
+        if self.collection_name not in db.list_collection_names():
+            collection = db[self.collection_name]
+            collection.create_index("url", unique=True)
+            collection.insert_one({"url": self.base_url, "depth": 0, "finish_scan": False, "middle_of_scan": False})
+        else:
+            collection = db[self.collection_name]
+            collection.update_many({"middle_of_scan": True}, {"$set": {"middle_of_scan": False}})
         return client, db, collection
 
     def get_link(self):
