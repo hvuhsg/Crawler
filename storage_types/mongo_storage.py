@@ -46,7 +46,7 @@ class Storage(BaseStorage):
         else:
             raise Exception("No links")
         if link["depth"] >= self.max_depth:
-            return '', None
+            return None, None
         self.links_collection.update_one({"_id": link["_id"]}, {"$set": {"middle_of_scan": True}})
         return link["url"], link["depth"]
 
@@ -66,4 +66,3 @@ class Storage(BaseStorage):
                 pass
             else:
                 count += 1
-        print(count)

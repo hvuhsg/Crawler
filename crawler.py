@@ -1,6 +1,9 @@
 from time import sleep, time
 
 
+SLEEP_TIME_BETWEEN_THREAD_DEPLOY = 7.5
+
+
 class Crawler:
     def __init__(
         self,
@@ -28,8 +31,8 @@ class Crawler:
 
     def run_workers(self):
         for worker in self.workers:
-            worker.start()  # start thread
-            sleep(5)
+            worker.run()  # start thread
+            sleep(SLEEP_TIME_BETWEEN_THREAD_DEPLOY)
 
     def stop_workers(self):
         for worker in self.workers:
@@ -37,11 +40,8 @@ class Crawler:
 
     def idle(self, timeout=None):
         """
-
         :param timeout: time to sleep in seconds
-        :return: None
         """
-
         try:
             start_time = time()
             while True:
