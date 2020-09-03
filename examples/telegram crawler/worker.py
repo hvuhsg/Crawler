@@ -1,7 +1,8 @@
 from pyrogram.api.functions.messages import Search
 from pyrogram.api.types import MessageEntityTextUrl, MessageEntityUrl, MessageEntityMention
-from pyrogram.errors import FloodWait, UsernameInvalid
+from pyrogram.errors import FloodWait, UsernameInvalid, UserAlreadyParticipant
 from time import sleep
+from random import randrange
 from string import ascii_letters, digits
 
 from Crawler.core.base_worker import BaseWorker
@@ -11,14 +12,16 @@ class Worker(BaseWorker):
     def __init__(self, storage, **kwargs):
         self.userbot = kwargs['userbot']
         self.messages_filter = kwargs['messages_filter']
+        self.has_flood = False
         super().__init__(storage)
 
     def flood_handler(self, FW):
         print("Flood sleep:", FW.x)
         sleep(FW.x*5)
+        self.has_flood = True
 
     def is_telegram_link(self, clean_url):
-        if 't.me/' not in clean_url:
+        if 't.me/' not in clean_url and 'telegram.me/' not in clean_url:
             return False
         return True
 
@@ -34,7 +37,7 @@ class Worker(BaseWorker):
         is_digest = True
         for letter in last_part:
             if letter not in digits:
-                is_digest=False
+                is_digest = False
                 break
         if is_digest:
             return link[:link.rfind('/')]
@@ -67,6 +70,8 @@ class Worker(BaseWorker):
         except FloodWait as FW:
             self.flood_handler(FW)
             chat = self.get_chat(clean_link)
+        except UserAlreadyParticipant:
+            chat = self.userbot.get_chat(clean_link)
         return chat
 
     def get_link_messages(self, peer):
@@ -114,15 +119,23 @@ class Worker(BaseWorker):
         if "joinchat" in link:
             self.userbot.leave_chat(chat.id, delete=True)
 
+    def delay(self):
+        first_rand = randrange(10, 60)
+        min_sleep = 60 if self.has_flood else 0
+        second_rand = randrange(min_sleep, first_rand+min_sleep)
+        print(f"Sleeping for {second_rand} seconds.")
+        sleep(second_rand)
+        print("End sleep.")
+
     def find_sublinks(self, link):
-        sleep(5)
+        self.delay()
         clean_link = self.clean_link(link)
         try:
             chat = self.get_chat(clean_link)
         except UsernameInvalid:
-            return []
+            return [], None
         peer = self.userbot.resolve_peer(chat.id)
         link_messages = self.get_link_messages(peer)
         telegram_links = self.return_links_from_messages(link_messages)
         self.cleanup(chat, clean_link)
-        return telegram_links
+        return telegram_links, chat

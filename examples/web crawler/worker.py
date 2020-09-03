@@ -26,7 +26,7 @@ class Worker(BaseWorker):
         sublinks = []
         result = self.session.get('http://'+link, timeout=10)
         if result.status_code != 200:
-            return sublinks
+            return sublinks, None
         html = result.text
         soup = BeautifulSoup(html, features="lxml")
 
@@ -44,6 +44,6 @@ class Worker(BaseWorker):
                     sublinks.append(sublink.replace(protocol, ''))
             elif sublink.startswith('/'):
                 sublinks.append(pure_link+sublink)
-        return sublinks
+        return sublinks, html
 
 
