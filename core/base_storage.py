@@ -21,6 +21,7 @@ class BaseStorage(ABC):
         """
         return (link<str>, link depth<int>)
         link is an unique url
+        If you run out of link's return (None, None)
         """
         raise NotImplemented
 
