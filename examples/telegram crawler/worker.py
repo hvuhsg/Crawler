@@ -17,7 +17,7 @@ class Worker(BaseWorker):
         self.userbot = kwargs["userbot"]
         self.messages_filter = kwargs["messages_filter"]
         self.has_flood = False
-        super().__init__(storage)
+        super().__init__(storage, **kwargs)
 
     def flood_handler(self, FW):
         print("Flood sleep:", FW.x)

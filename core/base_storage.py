@@ -1,3 +1,4 @@
+from loguru import logger
 from abc import ABC, abstractmethod
 from time import sleep
 from queue import Queue, Empty, Full
@@ -25,6 +26,7 @@ class BaseStorage(ABC):
         :return: None
         """
         self._db_service.start()
+        logger.success("DB setup successfully.")
 
     def get_link(self) -> (str, int):
         """

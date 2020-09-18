@@ -1,4 +1,6 @@
+import sys
 from time import sleep, time
+from loguru import logger
 from .core.base_storage import BaseStorage
 
 SLEEP_TIME_BETWEEN_THREAD_DEPLOY = 5
@@ -23,21 +25,53 @@ class Crawler:
 
         self.storage = storage
         self.worker_assets = worker_assets
+        self.setup_logger()
+
+    def setup_logger(self):
+        logger.remove()
+        logger.add(
+            sys.stderr,
+            colorize=True,
+            enqueue=True,
+            format="<blue>{time}</blue> | <green>{level}</green> | {message}",
+            filter=lambda record: record["module"] == "crawler"
+        )
+        logger.add(
+            sys.stderr,
+            colorize=True,
+            enqueue=True,
+            format="<blue>{time}</blue> | <green>{level}</green> | <yellow>{thread}</yellow> | {message}",
+            filter=lambda record: record["module"] == "base_worker"
+        )
+        logger.add(
+            sys.stderr,
+            colorize=True,
+            enqueue=True,
+            format="<blue>{time}</blue> | <green>{level}</green> | <blue>{module}</blue> | {message}",
+            filter=lambda record: record["module"] not in ("crawler", "base_worker")
+        )
 
     def create_workers(self):
-        for _ in range(self.workers_number):
+        logger.info("Creating workers.")
+        for worker_id in range(self.workers_number):
+            self.worker_assets["worker_id"] = worker_id
             worker = self.worker_class(self.storage, **self.worker_assets)
             self.workers.append(worker)
+        self.worker_assets.pop("worker_id", None)
 
     def run_workers(self):
+        logger.info("Run workers.")
         for index, worker in enumerate(self.workers):
             worker.run()  # start thread
+            logger.info(f"Worker number <{index+1}> is running.")
             if index + 1 != len(self.workers):
                 sleep(SLEEP_TIME_BETWEEN_THREAD_DEPLOY)
 
     def stop_workers(self):
-        for worker in self.workers:
+        logger.info("Stops workers.")
+        for index, worker in enumerate(self.workers):
             worker.stop()  # stop thread
+            logger.info(f"Worker number <{index}> has stopped.")
 
     def idle(self, timeout=None):
         """
@@ -53,5 +87,5 @@ class Crawler:
             self.stop_workers()
             self.storage.stop()
             sleep(1)
-            print("-" * 10, "Shutdown in 10 seconds!", "-" * 10)
+            logger.warning("-" * 10 + "Shutdown in 10 seconds!" + "-" * 10)
             sleep(10)

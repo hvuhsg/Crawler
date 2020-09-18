@@ -1,10 +1,12 @@
 from threading import Thread
 from abc import abstractmethod
 from typing import Tuple, List
+from loguru import logger
 
 
 class BaseWorker:
-    def __init__(self, storage):
+    def __init__(self, storage, **assets):
+        self.assets = assets
         self.storage = storage
         self._stop = False
         self._thread = Thread(target=self.loop)
@@ -40,6 +42,7 @@ class BaseWorker:
         if link is None:
             self._stop = True
             return
+        logger.info(f"Processing link <{link}>")
         sublinks, link_data = self.find_sublinks(link)
         self.process_link_data(link_data)
         self.storage.push_links(sublinks, link_depth + 1, link)
