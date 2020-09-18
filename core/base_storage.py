@@ -36,3 +36,6 @@ class BaseStorage(ABC):
         :return: None
         """
         raise NotImplemented
+
+    def stop(self):
+        pass

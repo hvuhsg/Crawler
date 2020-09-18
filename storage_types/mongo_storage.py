@@ -11,7 +11,7 @@ class Storage(BaseStorage):
         self.collection_name = base_url
         self.ip = ip
         self.port = port
-        self.timeout = timeout # 1000 = 1 second
+        self.timeout = timeout  # 1000 = 1 second
         self.username = username
         self.password = password
         self.client, self.db, self.links_collection = self.setup()
@@ -58,7 +58,7 @@ class Storage(BaseStorage):
                 self.links_collection.insert_one(
                     {"url": link,
                      "depth": depth,
-                     "finish_scan":False,
+                     "finish_scan": False,
                      "middle_of_scan": False,
                      }
                 )
