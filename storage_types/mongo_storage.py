@@ -1,7 +1,15 @@
 import pymongo
 from pymongo.errors import DuplicateKeyError
+from time import sleep
+from threading import Thread
+from queue import Queue, Empty, Full
+
 
 from ..core.base_storage import BaseStorage
+
+
+QUEUE_MAX_SIZE = 50
+EMPTY_LINK = (None, None)
 
 
 class Storage(BaseStorage):
@@ -14,6 +22,12 @@ class Storage(BaseStorage):
         self.timeout = timeout  # 1000 = 1 second
         self.username = username
         self.password = password
+
+        self._links_queue = Queue(maxsize=QUEUE_MAX_SIZE)
+        self._pushed_links_queue = Queue()
+        self._stop_db_service = False
+        self._db_service = Thread(target=self._db_service_loop)
+
         self.client, self.db, self.links_collection = self.setup()
 
     def connect_to_mongo(self):
@@ -37,20 +51,36 @@ class Storage(BaseStorage):
         else:
             collection = db[self.collection_name]
             collection.update_many({"middle_of_scan": True}, {"$set": {"middle_of_scan": False}})
+        self._db_service.start()
         return client, db, collection
 
     def get_link(self):
-        link = list(self.links_collection.find({"finish_scan": False, "middle_of_scan": False}).sort('depth', pymongo.ASCENDING).limit(1))
+        try:
+            return self._links_queue.get(timeout=3)
+        except Empty:
+            return None, None
+
+    def push_links(self, links, links_depth, father_link):
+        try:
+            self._pushed_links_queue.put((links, links_depth, father_link), timeout=3)
+        except Full:
+            pass
+
+    def _get_link_from_db(self):
+        link = list(self.links_collection.find({"finish_scan": False, "middle_of_scan": False})
+                    .sort('depth', pymongo.ASCENDING)
+                    .limit(1)
+                    )
         if link:
             link = link[0]
         else:
-            raise Exception("No links")
+            return EMPTY_LINK
         if link["depth"] >= self.max_depth:
-            return None, None
+            return EMPTY_LINK
         self.links_collection.update_one({"_id": link["_id"]}, {"$set": {"middle_of_scan": True}})
         return link["url"], link["depth"]
 
-    def push_links(self, links, depth, father_link):
+    def _push_links_to_db(self, links, depth, father_link):
         self.links_collection.update_one({"url": father_link}, {"$set": {"finish_scan": True, "middle_of_scan": False}})
         count = 0
         for link in links:
@@ -66,3 +96,24 @@ class Storage(BaseStorage):
                 pass
             else:
                 count += 1
+
+    def _db_service_loop(self):
+        while not self._stop_db_service:
+            sleep(0.5)
+            while not self._pushed_links_queue.empty():
+                args = self._pushed_links_queue.get(timeout=3)
+                self._push_links_to_db(*args)
+
+            if queue_size := self._links_queue.qsize() < QUEUE_MAX_SIZE:
+                for _ in range(QUEUE_MAX_SIZE - queue_size):
+                    link = self._get_link_from_db()
+                    if link is EMPTY_LINK:
+                        break
+                    try:
+                        self._links_queue.put(link, timeout=3)
+                    except Full:
+                        pass
+        self.client.close()
+
+    def stop(self):
+        self._stop_db_service = True
