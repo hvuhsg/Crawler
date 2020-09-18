@@ -1,14 +1,7 @@
 import os
 import sqlite3
-from threading import Thread
-from queue import Queue, Empty, Full
-from time import sleep
 
-from ..core.base_storage import BaseStorage
-
-
-QUEUE_MAX_SIZE = 50
-EMPTY_LINK = (None, None)
+from ..core.base_storage import BaseStorage, EMPTY_LINK
 
 
 class Storage(BaseStorage):
@@ -20,12 +13,6 @@ class Storage(BaseStorage):
 
         self._db_connection = sqlite3.connect(db_name)
         self._cursor = self._db_connection.cursor()
-
-        self._links_queue = Queue(maxsize=QUEUE_MAX_SIZE)
-        self._pushed_links_queue = Queue()
-        self._stop_db_service = False
-        self._db_service = Thread(target=self._db_service_loop)
-
         self.setup()
 
     def setup(self):
@@ -46,21 +33,9 @@ class Storage(BaseStorage):
             )
             self._db_connection.commit()
         self._db_connection.close()
-        self._db_service.start()
+        super().setup()
 
-    def get_link(self):
-        try:
-            return self._links_queue.get(timeout=3)
-        except Empty:
-            return None, None
-
-    def push_links(self, links, links_depth, father_link):
-        try:
-            self._pushed_links_queue.put((links, links_depth, father_link), timeout=3)
-        except Full:
-            pass
-
-    def _push_links_to_db(self, links, depth, father_link):
+    def push_links_to_db(self, links, depth, father_link):
         self._cursor.execute("UPDATE links SET middle_of_scan=0, finish_scan=1 WHERE url = ?", (father_link,))
         self._db_connection.commit()
 
@@ -74,11 +49,11 @@ class Storage(BaseStorage):
                 pass
         self._db_connection.commit()
 
-    def _get_link_from_db(self):
+    def get_link_from_db(self):
         self._cursor.execute("SELECT * FROM links WHERE finish_scan=0 AND middle_of_scan=0 ORDER BY depth")
         link = self._cursor.fetchone()
         if link is None or link[1] >= self.max_depth:
-            return None, None
+            return EMPTY_LINK
 
         link = {"url": link[0], "depth": link[1], "finish_scan": link[2], "middle_scan": link[3]}
 
@@ -89,24 +64,8 @@ class Storage(BaseStorage):
     def _db_service_loop(self):
         self._db_connection = sqlite3.connect(self.db_name)
         self._cursor = self._db_connection.cursor()
+        super()._db_service_loop()
 
-        while not self._stop_db_service:
-            sleep(0.5)
-            while not self._pushed_links_queue.empty():
-                args = self._pushed_links_queue.get(timeout=3)
-                self._push_links_to_db(*args)
-
-            if queue_size := self._links_queue.qsize() < QUEUE_MAX_SIZE:
-                for _ in range(QUEUE_MAX_SIZE - queue_size):
-                    link = self._get_link_from_db()
-                    if link is EMPTY_LINK:
-                        break
-                    try:
-                        self._links_queue.put(link, timeout=3)
-                    except Full:
-                        pass
+    def cleanup(self):
         self._db_connection.commit()
         self._db_connection.close()
-
-    def stop(self):
-        self._stop_db_service = True
