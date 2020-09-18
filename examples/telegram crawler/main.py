@@ -7,7 +7,7 @@ from pyrogram.api.types import InputMessagesFilterUrl
 
 
 def main():
-    base_url = 'https://t.me/BonOgood'
+    base_url = "https://t.me/BonOgood"
     depth = 2
     userbot = Client("userbot")
     messages_filter = InputMessagesFilterUrl()
@@ -16,14 +16,24 @@ def main():
 
     userbot.start()
 
-    mongo_storage = Storage(base_url=base_url,
-                            db_name='crawlerDB',
-                            username='crawler_username',
-                            password="crawler_password",
-                            max_depth=depth)
+    mongo_storage = Storage(
+        base_url=base_url,
+        db_name="crawlerDB",
+        username="crawler_username",
+        password="crawler_password",
+        max_depth=depth,
+    )
 
-    crawler = Crawler(base_url=base_url, depth=depth, storage=mongo_storage,
-                      worker_class=Worker, workers_number=1, **worker_arguments)
+    crawler = Crawler(
+        base_url=base_url,
+        depth=depth,
+        storage=mongo_storage,
+        worker_class=Worker,
+        workers_number=1,
+        **worker_arguments
+    )
     crawler.create_workers()
     crawler.run_workers()
+
+
 main()

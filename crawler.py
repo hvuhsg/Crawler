@@ -32,7 +32,7 @@ class Crawler:
     def run_workers(self):
         for index, worker in enumerate(self.workers):
             worker.run()  # start thread
-            if index+1 != len(self.workers):
+            if index + 1 != len(self.workers):
                 sleep(SLEEP_TIME_BETWEEN_THREAD_DEPLOY)
 
     def stop_workers(self):
@@ -53,7 +53,5 @@ class Crawler:
             self.stop_workers()
             self.storage.stop()
             sleep(1)
-            print('-'*10, "Shutdown in 10 seconds!", '-'*10)
+            print("-" * 10, "Shutdown in 10 seconds!", "-" * 10)
             sleep(10)
-
-

@@ -5,8 +5,17 @@ from ..core.base_storage import BaseStorage, EMPTY_LINK
 
 
 class Storage(BaseStorage):
-    def __init__(self, db_name, base_url, max_depth, username, password, ip='localhost', port=27017,
-                 timeout=5000):
+    def __init__(
+        self,
+        db_name,
+        base_url,
+        max_depth,
+        username,
+        password,
+        ip="localhost",
+        port=27017,
+        timeout=5000,
+    ):
         super().__init__(db_name, base_url, max_depth)
         self.collection_name = base_url
         self.ip = ip
@@ -33,38 +42,54 @@ class Storage(BaseStorage):
         if self.collection_name not in db.list_collection_names():
             collection = db[self.collection_name]
             collection.create_index("url", unique=True)
-            collection.insert_one({"url": self.base_url, "depth": 0, "finish_scan": False, "middle_of_scan": False})
+            collection.insert_one(
+                {
+                    "url": self.base_url,
+                    "depth": 0,
+                    "finish_scan": False,
+                    "middle_of_scan": False,
+                }
+            )
         else:
             collection = db[self.collection_name]
-            collection.update_many({"middle_of_scan": True}, {"$set": {"middle_of_scan": False}})
+            collection.update_many(
+                {"middle_of_scan": True}, {"$set": {"middle_of_scan": False}}
+            )
         super().setup()
         return client, db, collection
 
     def get_link_from_db(self):
-        link = list(self.links_collection.find({"finish_scan": False, "middle_of_scan": False})
-                    .sort('depth', pymongo.ASCENDING)
-                    .limit(1)
-                    )
+        link = list(
+            self.links_collection.find({"finish_scan": False, "middle_of_scan": False})
+            .sort("depth", pymongo.ASCENDING)
+            .limit(1)
+        )
         if link:
             link = link[0]
         else:
             return EMPTY_LINK
         if link["depth"] >= self.max_depth:
             return EMPTY_LINK
-        self.links_collection.update_one({"_id": link["_id"]}, {"$set": {"middle_of_scan": True}})
+        self.links_collection.update_one(
+            {"_id": link["_id"]}, {"$set": {"middle_of_scan": True}}
+        )
         return link["url"], link["depth"]
 
     def push_links_to_db(self, links, depth, father_link):
-        self.links_collection.update_one({"url": father_link}, {"$set": {"finish_scan": True, "middle_of_scan": False}})
+        self.links_collection.update_one(
+            {"url": father_link},
+            {"$set": {"finish_scan": True, "middle_of_scan": False}},
+        )
         count = 0
         for link in links:
             try:
                 self.links_collection.insert_one(
-                    {"url": link,
-                     "depth": depth,
-                     "finish_scan": False,
-                     "middle_of_scan": False,
-                     }
+                    {
+                        "url": link,
+                        "depth": depth,
+                        "finish_scan": False,
+                        "middle_of_scan": False,
+                    }
                 )
             except DuplicateKeyError:
                 pass
