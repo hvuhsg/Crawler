@@ -2,7 +2,7 @@
 crawler library that allow you to focus on the part of getting the information from the target
 and not worrying about the db or the threads.
 
-You can find examples on the [examples]("./examples") folder.
+You can find examples on the [examples](./examples) folder.
 
 #### DB
 The library is supporting 2 types for now.
