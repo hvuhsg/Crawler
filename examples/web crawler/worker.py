@@ -5,12 +5,12 @@ from Crawler.core.base_worker import BaseWorker
 
 
 class Worker(BaseWorker):
-    def __init__(self, storage):
+    def __init__(self, storage, **kwargs):
         self.session = requests.session()
         self.session.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/46.0",
         }
-        super().__init__(storage)
+        super().__init__(storage, **kwargs)
 
     def clean_link(self, link):
         if link.startswith("http"):
